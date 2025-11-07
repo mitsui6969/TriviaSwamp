@@ -5,9 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -46,7 +48,7 @@ fun SettingScreen(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(top = 80.dp, start = 30.dp, end = 30.dp),
+            .padding(top = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
@@ -57,7 +59,6 @@ fun SettingScreen(modifier: Modifier = Modifier) {
                 .size(100.dp)
                 .clip(CircleShape)
                 .border(2.dp, Color.LightGray, CircleShape)
-
         )
         Text(
             text = "名前",
@@ -67,19 +68,20 @@ fun SettingScreen(modifier: Modifier = Modifier) {
 
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, Color.LightGray, RoundedCornerShape(12.dp))
-                .padding(vertical = 8.dp)
+                .background(Color.White)
+                .wrapContentWidth(Alignment.Start)
         ) {
+            Divider(color = Color.LightGray, thickness = 2.dp)
             SettingItem(icon = Icons.Default.Person, text = "プロフィール")
-            Divider(color = Color.LightGray, thickness = 1.dp)
+            Divider(color = Color.LightGray, thickness = 2.dp)
             SettingItem(icon = Icons.Default.Bookmark, text = "お気に入り")
-            Divider(color = Color.LightGray, thickness = 1.dp)
+            Divider(color = Color.LightGray, thickness = 2.dp)
             SettingItem(icon = Icons.Default.Key, text = "パスワード変更")
-            Divider(color = Color.LightGray, thickness = 1.dp)
+            Divider(color = Color.LightGray, thickness = 2.dp)
             SettingItem(icon = Icons.Default.Block, text = "ブロック")
-            Divider(color = Color.LightGray, thickness = 1.dp)
+            Divider(color = Color.LightGray, thickness = 2.dp)
             SettingItem(icon = Icons.Default.Logout, text = "ログアウト")
+            Divider(color = Color.LightGray, thickness = 2.dp)
         }
     }
 }
@@ -89,7 +91,8 @@ fun SettingItem(icon: ImageVector, text: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { /* TODO: 項目を押したときの処理 */ }
+            .clickable { /* TODO */ }
+            .background(Color.White)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -109,11 +112,4 @@ fun SettingItem(icon: ImageVector, text: String) {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun SettingScreenPreview() {
-    TriviaSwampTheme {
-        SettingScreen()
-    }
-}
 
