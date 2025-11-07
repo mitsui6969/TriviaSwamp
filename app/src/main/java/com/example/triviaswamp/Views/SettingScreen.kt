@@ -68,7 +68,6 @@ fun SettingScreen(modifier: Modifier = Modifier) {
 
         Column(
             modifier = Modifier
-                .background(Color.White)
                 .wrapContentWidth(Alignment.Start)
         ) {
             Divider(color = Color.LightGray, thickness = 2.dp)
@@ -105,7 +104,7 @@ fun SettingItem(icon: ImageVector, text: String) {
         Spacer(modifier = Modifier.width(16.dp))
         Text(
             text = text,
-            fontSize = 18.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Medium,
             color = Color.Black
         )
