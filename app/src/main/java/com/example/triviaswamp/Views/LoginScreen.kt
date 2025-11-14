@@ -21,7 +21,7 @@ import com.example.triviaswamp.ui.theme.TriviaSwampTheme
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        //enableEdgeToEdge()
         setContent {
             TriviaSwampTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
