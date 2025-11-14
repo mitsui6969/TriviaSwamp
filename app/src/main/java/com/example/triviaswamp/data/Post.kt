@@ -15,5 +15,6 @@ data class Post(
     val retweets: Int = 0,
     val replies: Int = 0,
     val isLiked: Boolean = false,
-    val isRetweeted: Boolean = false
+    val isRetweeted: Boolean = false,
+    val image: Any? = null
 )

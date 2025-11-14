@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -61,6 +63,7 @@ fun UserScreen() {
     val posts = remember { mutableStateListOf<Post>() }
     var showPostBox by remember { mutableStateOf(false) }
     var newPostText by remember { mutableStateOf("") }
+    var postImage by remember { mutableStateOf<Any?>(null) }
 
     var username by remember { mutableStateOf("ユーザー名") }
     var profile by remember { mutableStateOf("これはプロフィールです。") }
@@ -82,6 +85,9 @@ fun UserScreen() {
     }
     val pickIconLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
         uri?.let { tempIconImage = it }
+    }
+    val pickPostImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
+        uri?.let { postImage = it }
     }
 
     Scaffold(
@@ -125,15 +131,23 @@ fun UserScreen() {
             if (showPostBox) {
                 PostInputSection(
                     text = newPostText,
+                    postImage = postImage,
                     onTextChange = { newPostText = it },
-                    onCancel = { showPostBox = false },
+                    onCancel = {
+                        showPostBox = false
+                        newPostText = ""
+                        postImage = null // 画像もクリア
+                    },
                     onPost = {
-                        if (newPostText.isNotBlank()) {
-                            posts.add(0, Post(UUID.randomUUID().toString(), username, "@$username", newPostText, LocalDateTime.now()))
+                        if (newPostText.isNotBlank() || postImage != null) {
+                            posts.add(0, Post(UUID.randomUUID().toString(), username, "@$username", newPostText, LocalDateTime.now(), image = postImage))
                             newPostText = ""
+                            postImage = null // 画像もクリア
                             showPostBox = false
                         }
                     },
+                    onAddImageClick = { pickPostImageLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                    onRemoveImageClick = { postImage = null },
                     focusRequester = focusRequester
                 )
             }
@@ -257,22 +271,48 @@ fun EditUserDialog(
 @Composable
 fun PostInputSection(
     text: String,
+    postImage: Any?,
     onTextChange: (String) -> Unit,
     onCancel: () -> Unit,
     onPost: () -> Unit,
+    onAddImageClick: () -> Unit,
+    onRemoveImageClick: () -> Unit,
     focusRequester: FocusRequester
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
         OutlinedTextField(
             value = text,
             onValueChange = onTextChange,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).focusRequester(focusRequester),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp).focusRequester(focusRequester),
             label = { Text("つぶやきを書く...") },
             placeholder = { Text("いま何してる？") }
         )
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onCancel) { Text("キャンセル") }
-            Button(onClick = onPost) { Text("投稿") }
+
+        if (postImage != null) {
+            Box(modifier = Modifier.padding(top = 8.dp)) {
+                AsyncImage(
+                    model = postImage,
+                    contentDescription = "投稿画像プレビュー",
+                    modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                IconButton(
+                    onClick = onRemoveImageClick,
+                    modifier = Modifier.align(Alignment.TopEnd).background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "画像を削除", tint = Color.White)
+                }
+            }
+        }
+
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onAddImageClick) { // IconButtonをTextButtonに変更
+                Text("画像を追加")
+            }
+            Row {
+                TextButton(onClick = onCancel) { Text("キャンセル") }
+                Button(onClick = onPost) { Text("投稿") }
+            }
         }
     }
 }
@@ -297,7 +337,18 @@ fun PostListNoGap(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(username, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(post.content, fontSize = 16.sp)
+                    if (post.content.isNotBlank()) {
+                        Text(post.content, fontSize = 16.sp)
+                    }
+                    if (post.image != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        AsyncImage(
+                            model = post.image,
+                            contentDescription = "投稿画像",
+                            modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
             Divider()
