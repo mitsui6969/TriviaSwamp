@@ -5,9 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -29,6 +31,8 @@ import com.example.triviaswamp.Views.SettingScreen
 import com.example.triviaswamp.Views.UserScreen
 import com.example.triviaswamp.Views.LoginScreen
 import com.example.triviaswamp.ui.theme.TriviaSwampTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // 各タブ画面の情報を定義するクラス
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {

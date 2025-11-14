@@ -42,7 +42,7 @@ import java.time.LocalDateTime
 class HomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        //enableEdgeToEdge()
         setContent {
             TriviaSwampTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
