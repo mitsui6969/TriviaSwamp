@@ -1,10 +1,13 @@
 package com.example.triviaswamp.Views
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.Image
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,18 +24,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
 import com.example.triviaswamp.R
+import com.example.triviaswamp.data.Post
 import com.example.triviaswamp.ui.theme.TriviaSwampTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.util.UUID
 
 class UserActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,23 +55,34 @@ class UserActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserScreen() {
+    val context = LocalContext.current
 
-    // 投稿
-    val posts = remember { mutableStateListOf<String>() }
+    // -- States --
+    val posts = remember { mutableStateListOf<Post>() }
     var showPostBox by remember { mutableStateOf(false) }
     var newPostText by remember { mutableStateOf("") }
 
-    // 編集ダイアログの状態
-    var showEditDialog by remember { mutableStateOf(false) }
-
-    // 編集可能ユーザーデータ
     var username by remember { mutableStateOf("ユーザー名") }
-    var profile by remember { mutableStateOf("これはプロフィールです。ここに自己紹介文が入ります。") }
-    var headerImage by remember { mutableStateOf(R.drawable.footer) }
-    var iconImage by remember { mutableStateOf(R.drawable.footer) }
+    var profile by remember { mutableStateOf("これはプロフィールです。") }
+    var headerImage by remember { mutableStateOf<Any?>(R.drawable.footer) }
+    var iconImage by remember { mutableStateOf<Any?>(R.drawable.footer) }
+
+    var showEditDialog by remember { mutableStateOf(false) }
+    var tempUsername by remember { mutableStateOf("") }
+    var tempProfile by remember { mutableStateOf("") }
+    var tempHeaderImage by remember { mutableStateOf<Any?>(null) }
+    var tempIconImage by remember { mutableStateOf<Any?>(null) }
 
     val focusRequester = remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
+
+    // -- Modern Photo Picker Launchers --
+    val pickHeaderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
+        uri?.let { tempHeaderImage = it }
+    }
+    val pickIconLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
+        uri?.let { tempIconImage = it }
+    }
 
     Scaffold(
         floatingActionButton = {
@@ -82,42 +99,37 @@ fun UserScreen() {
             }
         }
     ) { padding ->
-
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding)
-        ) {
-            // ヘッダー
-            Image(
-                painter = painterResource(id = headerImage),
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            AsyncImage(
+                model = headerImage,
                 contentDescription = "ヘッダー画像",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp),
+                modifier = Modifier.fillMaxWidth().height(100.dp),
                 contentScale = ContentScale.Crop
             )
 
-            // プロフィール
-            ProfileSection( // ProfileRowからProfileSectionに変更
+            ProfileSection(
                 name = username,
                 profile = profile,
-                onEditClick = { showEditDialog = true },
-                iconRes = iconImage
+                icon = iconImage,
+                onEditClick = {
+                    tempUsername = username
+                    tempProfile = profile
+                    tempHeaderImage = headerImage
+                    tempIconImage = iconImage
+                    showEditDialog = true
+                }
             )
 
             Divider()
 
-            // 投稿欄
             if (showPostBox) {
                 PostInputSection(
                     text = newPostText,
                     onTextChange = { newPostText = it },
-                    onCancel = {
-                        newPostText = ""
-                        showPostBox = false
-                    },
+                    onCancel = { showPostBox = false },
                     onPost = {
                         if (newPostText.isNotBlank()) {
-                            posts.add(0, newPostText)
+                            posts.add(0, Post(UUID.randomUUID().toString(), username, "@$username", newPostText, LocalDateTime.now()))
                             newPostText = ""
                             showPostBox = false
                         }
@@ -126,181 +138,121 @@ fun UserScreen() {
                 )
             }
 
-            // weight(1f) を適用して残りのスペースをすべて使う
-            PostListNoGap(posts = posts, modifier = Modifier.weight(1f))
+            PostListNoGap(posts, username, iconImage, Modifier.weight(1f))
         }
     }
 
-    // 編集ダイアログ
     if (showEditDialog) {
         EditUserDialog(
-            username = username,
-            profile = profile,
-            headerRes = headerImage,
-            iconRes = iconImage,
+            username = tempUsername,
+            profile = tempProfile,
+            header = tempHeaderImage,
+            icon = tempIconImage,
+            onUsernameChange = { tempUsername = it },
+            onProfileChange = { tempProfile = it },
+            onHeaderClick = { pickHeaderLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            onIconClick = { pickIconLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             onDismiss = { showEditDialog = false },
-            onSave = { newName, newProfile, newHeader, newIcon ->
-                username = newName
-                profile = newProfile
-                headerImage = newHeader
-                iconImage = newIcon
+            onSave = {
+                username = tempUsername
+                profile = tempProfile
+                headerImage = tempHeaderImage
+                iconImage = tempIconImage
                 showEditDialog = false
             }
         )
     }
 }
 
-// -----------------------------------------------------------------------------
-// プロフィール表示
-// -----------------------------------------------------------------------------
 
 @Composable
-fun ProfileSection(name: String, profile: String, onEditClick: () -> Unit, iconRes: Int) {
+fun ProfileSection(
+    name: String,
+    profile: String,
+    icon: Any?,
+    onEditClick: () -> Unit
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp, bottom = 8.dp, start = 12.dp, end = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 32.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Text(text = name, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(text = profile, fontSize = 14.sp, color = Color.Gray, maxLines = 2)
+            Column(modifier = Modifier.weight(1f).padding(end = 32.dp)) {
+                Text(name, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Spacer(Modifier.height(6.dp))
+                Text(profile, fontSize = 14.sp, color = Color.Gray, maxLines = 2)
             }
-
-            Image(
-                painter = painterResource(id = iconRes),
-                contentDescription = "ユーザーアイコン",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(CircleShape)
-                    .clickable { }
+            AsyncImage(
+                model = icon,
+                contentDescription = "アイコン",
+                modifier = Modifier.size(100.dp).clip(CircleShape),
+                contentScale = ContentScale.Crop
             )
         }
-
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = 29.dp, bottom = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(end = 29.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.End
         ) {
-            Button(
-                onClick = onEditClick,
-                modifier = Modifier.height(30.dp),
-                contentPadding = PaddingValues(vertical = 0.dp, horizontal = 8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Gray,
-                    contentColor = Color.White
-                )
-            ) {
+            Button(onClick = onEditClick, modifier = Modifier.height(30.dp)) {
                 Text("編集", fontSize = 14.sp)
             }
         }
     }
 }
 
-// -----------------------------------------------------------------------------
-// 編集ダイアログ
-// -----------------------------------------------------------------------------
-
 @Composable
 fun EditUserDialog(
     username: String,
     profile: String,
-    headerRes: Int,
-    iconRes: Int,
+    header: Any?,
+    icon: Any?,
+    onUsernameChange: (String) -> Unit,
+    onProfileChange: (String) -> Unit,
+    onHeaderClick: () -> Unit,
+    onIconClick: () -> Unit,
     onDismiss: () -> Unit,
-    onSave: (String, String, Int, Int) -> Unit
+    onSave: () -> Unit
 ) {
-    var newName by remember { mutableStateOf(username) }
-    var newProfile by remember { mutableStateOf(profile) }
-    var newHeader by remember { mutableStateOf(headerRes) }
-    var newIcon by remember { mutableStateOf(iconRes) }
-
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.medium,
-            tonalElevation = 6.dp,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-
+        Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 6.dp) {
+            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("プロフィール編集", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(16.dp))
 
                 Text("ヘッダー画像（タップで変更）")
-                Image(
-                    painter = painterResource(newHeader),
+                AsyncImage(
+                    model = header,
                     contentDescription = "ヘッダー",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(100.dp)
-                        .clickable { newHeader = R.drawable.footer },
+                    modifier = Modifier.fillMaxWidth().height(100.dp).clickable(onClick = onHeaderClick),
                     contentScale = ContentScale.Crop
                 )
 
                 Spacer(Modifier.height(16.dp))
 
                 Text("アイコン（タップで変更）")
-                Image(
-                    painter = painterResource(newIcon),
+                AsyncImage(
+                    model = icon,
                     contentDescription = "アイコン",
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .clickable { newIcon = R.drawable.footer }
+                    modifier = Modifier.size(80.dp).clip(CircleShape).clickable(onClick = onIconClick),
+                    contentScale = ContentScale.Crop
                 )
 
                 Spacer(Modifier.height(16.dp))
 
-                OutlinedTextField(
-                    value = newName,
-                    onValueChange = { newName = it },
-                    label = { Text("名前") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
+                OutlinedTextField(value = username, onValueChange = onUsernameChange, label = { Text("名前") }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = newProfile,
-                    onValueChange = { newProfile = it },
-                    label = { Text("プロフィール") },
-                    maxLines = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                OutlinedTextField(value = profile, onValueChange = onProfileChange, label = { Text("プロフィール") }, modifier = Modifier.fillMaxWidth())
 
                 Spacer(Modifier.height(16.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.End,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                     TextButton(onClick = onDismiss) { Text("キャンセル") }
-                    Button(onClick = {
-                        onSave(newName, newProfile, newHeader, newIcon)
-                    }) { Text("保存") }
+                    Button(onClick = onSave) { Text("保存") }
                 }
             }
         }
     }
 }
-
-// -----------------------------------------------------------------------------
-// 投稿処理
-// -----------------------------------------------------------------------------
 
 @Composable
 fun PostInputSection(
@@ -310,30 +262,15 @@ fun PostInputSection(
     onPost: () -> Unit,
     focusRequester: FocusRequester
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(12.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
         OutlinedTextField(
             value = text,
             onValueChange = onTextChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .focusRequester(focusRequester),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).focusRequester(focusRequester),
             label = { Text("つぶやきを書く...") },
-            placeholder = { Text("いま何してる？") },
-            singleLine = false,
-            maxLines = 6
+            placeholder = { Text("いま何してる？") }
         )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             TextButton(onClick = onCancel) { Text("キャンセル") }
             Button(onClick = onPost) { Text("投稿") }
         }
@@ -341,26 +278,27 @@ fun PostInputSection(
 }
 
 @Composable
-fun PostListNoGap(posts: List<String>, modifier: Modifier = Modifier) {
-    LazyColumn(
-        modifier = modifier.background(Color.White),
-        contentPadding = PaddingValues(0.dp)
-    ) {
+fun PostListNoGap(
+    posts: List<Post>,
+    username: String,
+    icon: Any?,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(modifier = modifier) {
         items(posts) { post ->
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RectangleShape,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-                color = Color.White
-            ) {
-                Text(
-                    text = post,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp, horizontal = 12.dp),
-                    fontSize = 16.sp
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.Top) {
+                AsyncImage(
+                    model = icon,
+                    contentDescription = "User Icon",
+                    modifier = Modifier.size(48.dp).clip(CircleShape),
+                    contentScale = ContentScale.Crop
                 )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(username, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(post.content, fontSize = 16.sp)
+                }
             }
             Divider()
         }
